@@ -18,3 +18,17 @@ export async function verifyToken(req: NextRequest) {
     return null; // ❌ Token ไม่ถูกต้อง
   }
 }
+
+export function middleware(req: NextRequest) {
+  if (req.method === "OPTIONS") {
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }
+  return NextResponse.next();
+}
