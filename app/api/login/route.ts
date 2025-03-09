@@ -17,11 +17,12 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("users")
-    .select("id, username") // เลือกเฉพาะคอลัมน์ที่จำเป็น
+    .select("id, username")
     .eq("id", userId)
     .single();
 
   if (error) {
+    console.error("❌ GET User Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -30,6 +31,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const contentType = req.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      return NextResponse.json({ error: "Invalid Content-Type, must be application/json" }, { status: 400 });
+    }
+
     const body = await req.json();
     const { username, password } = body;
 
@@ -44,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     const { data: users, error } = await supabase
       .from("users")
-      .select("id, username, password") // เลือกเฉพาะคอลัมน์ที่ใช้
+      .select("id, username, password")
       .eq("username", username)
       .limit(1);
 
@@ -65,7 +71,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // สร้าง JWT Token
     const token = jwt.sign(
       { id: user.id, username: user.username },
       process.env.BCRYPT_SALT!,
@@ -75,6 +80,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "Login successful", token, user }, { status: 200 });
   } catch (error) {
     console.error("❌ Login error:", error);
-    return NextResponse.json({ error: "Invalid JSON format" }, { status: 400 });
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid JSON format" }, { status: 400 });
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      return NextResponse.json({ error: "JWT Error" }, { status: 500 });
+    } else if (error instanceof Error) {
+        return NextResponse.json({error: error.message}, {status: 500})
+    }
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
